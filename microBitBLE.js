@@ -57,7 +57,7 @@
 	var location = window.location;
 
 	var microBitDevice,LEDtext,LEDmatrix,accelerometer,magnetometer,temperature,buttonA,buttonB;
-	var pinData,pinADconf,pinIOconf,pinPWMconf;
+	var pinData,pinADconf,pinIOconf,pinPWMconf,uartTX,uartRX;
 
 	var microBitBLE = ( function(){ 
 		
@@ -100,6 +100,7 @@
 			"MicroBit Temperature Service": "e95d6100-251d-470a-a062-fa1922dfa9a8",
 			"MicroBit Temperature Data": "e95d9250-251d-470a-a062-fa1922dfa9a8",
 			"MicroBit Temperature Period": "e95d1b25-251d-470a-a062-fa1922dfa9a8",
+			
 			/* Nordic UART Port Emulation */
 			"Nordic UART Service": "6e400001-b5a3-f393-e0a9-e50e24dcca9e",
 			"Nordic UART TX": "6e400002-b5a3-f393-e0a9-e50e24dcca9e",
@@ -202,6 +203,16 @@
 				dataUUID:microBitUUIDs["MicroBit PWM Control"],
 			});
 			
+			// UART Services[11:TX,12:RX]
+			characteristicSet.push({
+				serviceUUID:microBitUUIDs["Nordic UART Service"],
+				dataUUID:microBitUUIDs["Nordic UART TX"],
+			});
+			characteristicSet.push({
+				serviceUUID:microBitUUIDs["Nordic UART Service"],
+				dataUUID:microBitUUIDs["Nordic UART RX"],
+			});
+			
 			var svi = 0;
 			var microBotBLE = await connectBLE(characteristicSet);
 //			console.log("microBotBLE:",microBotBLE);
@@ -218,6 +229,11 @@
 			pinADconf  = microBotBLE.characteristics[++svi];
 			pinIOconf  = microBotBLE.characteristics[++svi];
 			pinPWMconf = microBotBLE.characteristics[++svi];
+			
+			// UARTChrs
+			uartTX = microBotBLE.characteristics[++svi];
+			uartRX = microBotBLE.characteristics[++svi];
+			
 			microBitDevice = microBotBLE.device;
 //			console.log("LED chara:",LEDtext, LEDmatrix);
 			console.log("Complete microBotBLE connection.");
@@ -358,6 +374,10 @@
 		  }))).buffer;
 		}
 
+		function buffer_to_string(buf) {
+			return String.fromCharCode.apply("", new Uint16Array(buf))
+		}
+
 		async function setLEDtext(ptext){
 			console.log(ptext);
 			var msg = string_to_buffer(ptext);
@@ -463,6 +483,18 @@
 			await pinIOconf.writeValue(ioc);
 			await pinADconf.writeValue(adc);
 			console.log("end config pin");
+		}
+		
+		async function sendUART(ptext){
+			console.log(ptext);
+			var msg = string_to_buffer(ptext);
+			//await uartRX.writeValue(msg);
+		}
+		
+		async function getUART(){
+				var val = buffer_to_string(await uartTX.readValue());
+				console.log("called UARTTX:", val, uartTX.value);
+				return val;
 		}
 		
 		async function getPin(){
@@ -626,6 +658,8 @@
 			getButtonA : getButtonA,
 			getButtonB : getButtonB,
 			getTemperature : getTemperature,
+			getUART: getUART,
+			sendUART: sendUART,
 			sleep: sleep,
 //			getPin: getPin,
 //			setPin: setPin,
